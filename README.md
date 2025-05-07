@@ -4,6 +4,7 @@
 1. This project is a self-motivated extension of an HTTP client/server project from my computer networks course (CS 3516).
 2. The HTTP client and server both function on their own, but the goal of this extension (DOS demonstration) was to interrupt this function via HTTP flood and further my understanding of simple network vulnerabilities along the way.
 3. To achieve this, simple_http_client.c has been modified into dos_attacker.c which will cause HTTP flooding with endless HTTP GET requests.
+4. This project is made for educational purposes only. Do NOT use it on anything but your own servers.
 
 ## Getting Started
 1. Download the files from this repository (dos_attacker.c, makefile, simple_http_client.c, simple_http_server.c, and TMDG.html)
@@ -21,6 +22,21 @@
 4. For the makefile commands (make all and make clean) to work properly along with the given TMDG.html file (or any file being read by the server) to be read properly, ensure that the downloaded files are located within the same directory.
 
 5. It is also important to note that the files are meant to be run within a Linux environment (i.e. makefile uses "rm" instead of "del" for "make clean", certain #include statements aren't valid in Windows, etc).
+
+## One-click DoS attack guide
+
+1. Ensure you're in the directory with run_dos_attack.sh
+2. Ensure run_dos_attack.sh is in the directory with all source code files
+3. Edit run_dos_attack.sh's TARGET variable: `TARGET=your-target-server-dot-com.com`
+4. Make the script executable: run
+       `chmod +x run_dos_attack.sh`
+   in the terminal
+6. Run
+   `./run_dos_attack.sh`
+   in the terminal
+7. After you're done, stop all processes with
+   `pkill http_server`
+
 
 ## Starting the Server
 
@@ -88,3 +104,4 @@
 
 ## Authors
  - Nicholas Golparvar
+ - Matvey Shestopalov (implemented forking logic and run_dos_attack.sh)
